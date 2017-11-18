@@ -1,55 +1,71 @@
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import org.graphstream.graph.*;
+import org.graphstream.graph.implementations.SingleGraph;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.util.Scanner;
 
 public class Main {
+    private static final int basePort=12345;
+    private static int maxNodes;
+
     public static void main(String[] args) {
-        int nodes=5;
-
-        //Setup default values
-        if (args.length>0) {
-            nodes=Integer.parseInt(args[0]);
+                if (args.length!=0) {
+            int nodeID = Integer.parseInt(args[0]);
+            //bring our nodes up slowly
+            try {
+                Thread.sleep(nodeID*3000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            NetworkNode node = new NetworkNode(nodeID, basePort);
+            return;
         }
-        //if nodes == 1, error
-
-        Graph graph = randomGraph(nodes);
-
-        System.out.println(graph);
-    }
-
-    private static Graph randomGraph(int nodes) {
-        List<Vertex> vertexs=new ArrayList<>();
-        List<Edge> edges = new ArrayList<>();
-
-        //build a set of nodes
-        for (int i=0;i<nodes;i++) {
-            Vertex vertex = new Vertex("Node_"+i,"Node_"+i);
-            vertexs.add(vertex);
-        }
-
-        //Build a random set of links
-        //Loop over each vertex, add 1 to 3 links
-        int max = vertexs.size()-1;
-        if (max>3)
-            max=3;
-
-        Random rand=new Random();
-        for (Vertex vertex : vertexs) {
-            int num = rand.nextInt(max)+1;
-            for (int i=0;i<num;i++) {
-                Vertex destination=vertex;
-                //make sure they are not the same.
-                while (destination.equals(vertex)) {
-                    //Make sure they are not already connected
-                    destination = vertexs.get(rand.nextInt(vertexs.size()));
-                }
-                int weight = rand.nextInt(9)+1;
-                String id = "Edge_"+vertex.getName()+"_"+destination.getName()+"_"+weight;
-                edges.add(new Edge(id,vertex,destination,weight));
+        else {
+            ClassLoader classLoader = Main.class.getClassLoader();
+            InputStream inputFile = classLoader.getResourceAsStream("graph.txt");
+            Scanner in = new Scanner(inputFile);
+            maxNodes = in.nextInt();
+            for (int i=0;i<maxNodes;i++) {
+                //Spawn more of ourself.
+                String[] parms = new String[1];
+                parms[0] = Integer.toString(i);
+                new Thread(() -> {
+                    new Main().main(parms);
+                }).start();
             }
         }
 
-        //Make our graph
-        return new Graph(vertexs,edges);
+        System.out.println("Press enter to exit");
+        try {
+            while(System.in.available()==0) {}
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            InetAddress inetAddress = InetAddress.getByName("255.255.255.255");
+            broadcast("exit",inetAddress);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
+
+    public static void broadcast( String data,InetAddress address) throws IOException {
+        //Broadcast should just send it out on a single port
+        //however we are running them on the same machine.
+        for (int i=0;i<maxNodes;i++) {
+            DatagramSocket socket = new DatagramSocket();
+            socket.setBroadcast(true);
+            byte[] buffer = data.getBytes();
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, address, basePort+i);
+            socket.send(packet);
+            socket.close();
+        }
+    }
+
 }

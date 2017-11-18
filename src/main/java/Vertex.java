@@ -7,6 +7,11 @@ public class Vertex {
         this.name = name;
     }
 
+    public Vertex(Integer id, Integer name) {
+        this.id = id.toString();
+        this.name = name.toString();
+    }
+
     public String getId() {
         return id;
     }

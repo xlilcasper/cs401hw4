@@ -8,9 +8,16 @@ public class Dijkstra {
     private Map<Vertex,Vertex> parents;
     private Map<Vertex,Integer> distance;
 
-    public Dijkstra(Graph graph) {
+    public Dijkstra(Graph graph,boolean undirected) {
         this.nodes = new ArrayList<Vertex>(graph.getVertexes());
         this.edges = new ArrayList<Edge>(graph.getEdges());
+        //if it is undirected, add all the reverse edges
+        ArrayList<Edge> newEdges = new ArrayList<>();
+        if (undirected) {
+            edges.forEach((e) -> newEdges.add(new Edge("rev "+e.getId(),e.getDestination(),e.getSource(),e.getWeight())));
+        }
+        edges.addAll(newEdges);
+        System.out.println("Created");
     }
 
     public void run(Vertex source) {
@@ -29,7 +36,6 @@ public class Dijkstra {
             unvisited.remove(node);
             minDistances(node);
         }
-
     }
 
     private boolean isVisted(Vertex vertex) {
