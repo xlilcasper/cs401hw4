@@ -17,7 +17,6 @@ public class Dijkstra {
             edges.forEach((e) -> newEdges.add(new Edge("rev "+e.getId(),e.getDestination(),e.getSource(),e.getWeight())));
         }
         edges.addAll(newEdges);
-        System.out.println("Created");
     }
 
     public void run(Vertex source) {

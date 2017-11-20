@@ -22,8 +22,6 @@ public class NetworkNode {
     private boolean debug=false;
 
     public NetworkNode(Integer id, int basePort) {
-        if (id==0)
-            debug=true;
         try {
             broadcastAddress = InetAddress.getByName("255.255.255.255") ;
         } catch (UnknownHostException e) {
@@ -45,7 +43,6 @@ public class NetworkNode {
                 private DatagramPacket packet;
                 @Override
                 public void run() {
-                    System.out.println("Node "+id+" is online");
                     byte[] buffer = new byte[2048];
                     packet=new DatagramPacket(buffer,buffer.length);
                     String msg="";
@@ -59,15 +56,25 @@ public class NetworkNode {
 
                                 Graph newGraph = processEdges(in,self,false);
                                 if (graph.combine(newGraph)) {
-                                    debugPrintln("Changed!");
                                     sendLinkPacket();
-                                    if (graph.getVertexes().size()==maxNodes && debug) {
-                                        int dest=5;
+                                    if (graph.getVertexes().size()==maxNodes) {
                                         Dijkstra dijkstra = new Dijkstra(graph,true);
                                         dijkstra.run(self);
-                                        debugPrintln("Shortest Path "+self.getId()+ " to "+dest);
-                                        LinkedList<Vertex> path = dijkstra.getPath(new Vertex(dest, dest));
-                                        debugPrintln(path);
+                                        HashMap<Integer,LinkedList<Vertex>> shortestPaths = new HashMap<>();
+                                        HashMap<Integer,String> forwardingTable = new HashMap<>();
+                                        for (int i=0;i<maxNodes;i++) {
+                                            if (i==id)
+                                                continue;
+                                            LinkedList<Vertex> path = dijkstra.getPath(new Vertex(i, i));
+                                            shortestPaths.put(i,path);
+                                            forwardingTable.put(i,path.get(1).getId());
+                                        }
+                                        System.out.println("-------------[ Tables ]-------------");
+                                        System.out.println("Least Cost Paths for node "+self.getId());
+                                        System.out.println(shortestPaths);
+                                        System.out.println("Forwarding Table for node "+self.getId());
+                                        System.out.println(forwardingTable);
+                                        System.out.println("------------------------------------"+System.lineSeparator());
                                     }
                                 } else if (!heardFrom.contains(from)) {
                                     heardFrom.add(from);
@@ -82,7 +89,6 @@ public class NetworkNode {
                 }
             }).start();
             sendLinkPacket();
-            System.out.println("Sent linkpacket");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (SocketException e) {

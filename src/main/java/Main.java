@@ -1,11 +1,9 @@
-import org.graphstream.graph.*;
-import org.graphstream.graph.implementations.SingleGraph;
-
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
 import java.util.Scanner;
 
 public class Main {
@@ -13,18 +11,36 @@ public class Main {
     private static int maxNodes;
 
     public static void main(String[] args) {
-                if (args.length!=0) {
-            int nodeID = Integer.parseInt(args[0]);
-            //bring our nodes up slowly
-            try {
-                Thread.sleep(nodeID*3000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        if (args.length==0) {
+            //We are the spawner. Launch the others
+            ClassLoader classLoader = Main.class.getClassLoader();
+            InputStream inputFile = classLoader.getResourceAsStream("graph.txt");
+            Scanner in = new Scanner(inputFile);
+            maxNodes = in.nextInt();
+            for (int i=0;i<maxNodes;i++) {
+                //Spawn more of ourself.
+                String[] parms = new String[1];
+                parms[0] = Integer.toString(i);
+                new Thread(() -> {
+                    try {
+                        Path path = (new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI())).toPath();
+                        String cmd = String.format("cmd /c start cmd.exe /K \"cd %s && java -jar %s %s && exit\"",path.getParent(),path.toAbsolutePath(),parms[0]);
+                        Process proc = Runtime.getRuntime().exec(cmd);
+                        proc.waitFor();
+                    } catch (URISyntaxException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }).start();
             }
-            NetworkNode node = new NetworkNode(nodeID, basePort);
-            return;
-        }
-        else {
+        } else if (Integer.parseInt(args[0])>=0) {
+            int nodeID = Integer.parseInt(args[0]);
+            NetworkNode node = new NetworkNode(nodeID,basePort);
+            System.out.println("I'm Node "+args[0]);
+        } else {
             ClassLoader classLoader = Main.class.getClassLoader();
             InputStream inputFile = classLoader.getResourceAsStream("graph.txt");
             Scanner in = new Scanner(inputFile);
@@ -38,7 +54,6 @@ public class Main {
                 }).start();
             }
         }
-
         System.out.println("Press enter to exit");
         try {
             while(System.in.available()==0) {}
